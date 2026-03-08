@@ -82,8 +82,8 @@ curl -fsSL https://bun.sh/install | bash
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/ktuscraper.git
-cd ktuscraper
+git clone https://github.com/abin-karukappallil/ktuResult-Scraper.git
+cd ktuResult-Scraper
 bun install
 ```
 
@@ -99,7 +99,7 @@ API_TOKEN_SECRET=your-random-secret-string-here
 
 Generate a secure secret:
 
-```bash
+```bash 
 bun -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
