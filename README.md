@@ -1,5 +1,8 @@
 # KTU Exam Result Scraper
 
+[![GitHub](https://img.shields.io/badge/GitHub-Open%20Source-blue?logo=github)](https://github.com/abin-karukappallil/KtuResult-Scraper)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/abin-karukappallil/KtuResult-Scraper/blob/main/LICENSE)
+
 A modern, secure web application built with **Next.js 16**, **tRPC**, and **Cheerio** that fetches semester results from the official KTU (APJ Abdul Kalam Technological University) Academic Portal — but **faster, cleaner, and more usable**.
 
 > **⚠️ Disclaimer:** This tool does **not** store any credentials or personal data. All login requests are proxied server-side and discarded after the session ends. This project is not affiliated with KTU.
@@ -82,8 +85,8 @@ curl -fsSL https://bun.sh/install | bash
 ### Installation
 
 ```bash
-git clone https://github.com/abin-karukappallil/ktuResult-Scraper.git
-cd ktuResult-Scraper
+git clone https://github.com/your-username/ktuscraper.git
+cd ktuscraper
 bun install
 ```
 
@@ -266,6 +269,14 @@ bun run start    # Start production server
 bun run lint     # Run ESLint
 bun test         # Run tests (if configured)
 ```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! This project is **open source** — feel free to fork, open issues, or submit pull requests.
+
+👉 **GitHub:** [https://github.com/abin-karukappallil/KtuResult-Scraper](https://github.com/abin-karukappallil/KtuResult-Scraper)
 
 ---
 

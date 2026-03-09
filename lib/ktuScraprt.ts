@@ -18,6 +18,8 @@ export interface ScraperInput {
 
 export interface ScraperResult {
   courses: CourseResult[];
+  sgpa?: string;
+  cgpa?: string;
 }
 
 const dispatcher = new Agent({
@@ -31,7 +33,12 @@ export async function scrapeKTUResults(
 ): Promise<ScraperResult> {
   const { sessionId, csrfToken, semesterId, studentId, cookies } = input;
 
-  console.log("[SCRAPER] Starting scrape. Semester:", semesterId, "StudentId:", studentId || "(self)");
+  console.log(
+    "[SCRAPER] Starting scrape. Semester:",
+    semesterId,
+    "StudentId:",
+    studentId || "(self)"
+  );
 
   const cookieHeader = cookies || `JSESSIONID=${sessionId}`;
 
@@ -68,7 +75,6 @@ export async function scrapeKTUResults(
 
   clearTimeout(timeout);
 
-
   if (!response.ok) {
     throw new Error(
       `KTU portal responded with ${response.status} ${response.statusText}`
@@ -86,8 +92,12 @@ export async function scrapeKTUResults(
   }
 
   const courses = parseResultTable(html);
+  const sgpa = calculateSGPA(courses);
 
-  return { courses };
+  return {
+    courses,
+    sgpa
+  };
 }
 
 function parseResultTable(html: string): CourseResult[] {
@@ -116,14 +126,18 @@ function parseResultTable(html: string): CourseResult[] {
   let creditIdx = -1;
   let gradeIdx = -1;
 
-  (table as cheerio.Cheerio<any>).find("tr").first().find("th, td").each((i, cell) => {
-    const text = $(cell).text().trim().toLowerCase();
-    if (text.includes("course code") || text.includes("code")) codeIdx = i;
-    else if (text.includes("course name") || text.includes("course") && nameIdx === -1) nameIdx = i;
-    else if (text.includes("credit")) creditIdx = i;
-    else if (text.includes("grade")) gradeIdx = i;
-  });
+  (table as cheerio.Cheerio<any>)
+    .find("tr")
+    .first()
+    .find("th, td")
+    .each((i, cell) => {
+      const text = $(cell).text().trim().toLowerCase();
 
+      if (text.includes("course code") || text === "code") codeIdx = i;
+      else if (text.includes("course name")) nameIdx = i;
+      else if (text.includes("credit")) creditIdx = i;
+      else if (text.includes("grade")) gradeIdx = i;
+    });
 
   if (codeIdx === -1) codeIdx = 1;
   if (nameIdx === -1) nameIdx = 2;
@@ -132,6 +146,7 @@ function parseResultTable(html: string): CourseResult[] {
 
   (table as cheerio.Cheerio<any>).find("tr").each((rowIdx, row) => {
     const cells = $(row).find("td");
+
     if (cells.length < 3) return;
 
     const courseCode = $(cells[codeIdx]).text().trim();
@@ -139,21 +154,53 @@ function parseResultTable(html: string): CourseResult[] {
     const credit = $(cells[creditIdx]).text().trim();
     const grade = $(cells[gradeIdx]).text().trim();
 
-    if (rowIdx <= 3) {
-      console.log(`[PARSER] Row ${rowIdx}:`, {
-        cellCount: cells.length,
-        courseCode,
-        courseName,
-        credit,
-        grade,
-        allCells: cells.map((_, c) => $(c).text().trim()).get(),
-      });
-    }
-
     if (!courseCode && !courseName) return;
 
-    courses.push({ courseCode, courseName, credit, grade });
+    courses.push({
+      courseCode,
+      courseName,
+      credit,
+      grade,
+    });
   });
 
   return courses;
+}
+
+function calculateSGPA(courses: CourseResult[]): string {
+  const gradePoints: Record<string, number> = {
+    "S": 10,
+    "A+": 9,
+    "A": 8.5,
+    "B+": 8,
+    "B": 7.5,
+    "C+": 7,
+    "C": 6.5,
+    "D": 6,
+    "P": 5.5,
+    "F": 0,
+    "FE": 0,
+    "ABSENT": 0
+  };
+
+  let totalCredits = 0;
+  let weightedPoints = 0;
+
+  for (const course of courses) {
+    const credit = Number(course.credit);
+    const grade = course.grade.trim().toUpperCase();
+
+    const gradePoint = gradePoints[grade] ?? 0;
+
+    totalCredits += credit;
+    weightedPoints += credit * gradePoint;
+  }
+
+  if (totalCredits === 0) {
+    return "0.00";
+  }
+
+  const sgpa = weightedPoints / totalCredits;
+
+  return sgpa.toFixed(2);
 }

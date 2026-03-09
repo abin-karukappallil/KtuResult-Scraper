@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { InputForm, type FormValues } from "./InputForm";
 import { ResultTable } from "./ResultTable";
 import { trpc, setApiToken } from "@/trpc/client";
-import { LayoutGrid, ShieldCheck, GraduationCap } from "lucide-react";
+import { LayoutGrid, ShieldCheck, GraduationCap, Github } from "lucide-react";
 
 interface ResultDashboardProps {
   title: string;
@@ -15,7 +15,7 @@ export function ResultDashboard({ title, subtitle }: ResultDashboardProps) {
   const [lastQuery, setLastQuery] = useState<FormValues | null>(null);
 
   const { data: tokenData } = trpc.result.getToken.useQuery(undefined, {
-    refetchInterval: 4 * 60 * 1000, 
+    refetchInterval: 4 * 60 * 1000,
     refetchOnWindowFocus: true,
   });
 
@@ -43,7 +43,7 @@ export function ResultDashboard({ title, subtitle }: ResultDashboardProps) {
   return (
     <div className="min-h-screen bg-[#fafafa] text-slate-900 dark:bg-[#050505] dark:text-slate-100 selection:bg-indigo-100 dark:selection:bg-indigo-900/30">
       <div className="fixed inset-0 z-0 opacity-[0.03] dark:opacity-[0.05] mask-[radial-gradient(ellipse_at_center,white,transparent)]"
-           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%23000' fill-rule='evenodd'/%3E%3C/svg%3E")` }}
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h40v40H0V0zm1 1h38v38H1V1z' fill='%23000' fill-rule='evenodd'/%3E%3C/svg%3E")` }}
       />
 
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-16">
@@ -75,7 +75,7 @@ export function ResultDashboard({ title, subtitle }: ResultDashboardProps) {
                   <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400">Login to get Tokens for Request</h2>
                   <ShieldCheck size={16} className="text-slate-300" />
                 </div>
-                
+
                 <InputForm onSubmit={handleSubmit} isLoading={isPending} />
               </div>
             </section>
@@ -107,7 +107,7 @@ export function ResultDashboard({ title, subtitle }: ResultDashboardProps) {
                 <LayoutGrid className="mb-4 text-slate-300 dark:text-slate-700" size={40} strokeWidth={1} />
                 <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Waiting for query</h3>
                 <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Provide your credentials to retrieve semester grades</p>
-                
+
               </div>
             )}
           </div>
@@ -118,6 +118,15 @@ export function ResultDashboard({ title, subtitle }: ResultDashboardProps) {
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">
               Verified Source: KTU Academic Portal
             </p>
+            <a
+              href="https://github.com/abin-karukappallil/KtuResult-Scraper"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+            >
+              <Github size={14} />
+              <span>Open Source</span>
+            </a>
           </div>
         </footer>
       </div>
