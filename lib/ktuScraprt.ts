@@ -144,25 +144,31 @@ function parseResultTable(html: string): CourseResult[] {
   if (creditIdx === -1) creditIdx = 3;
   if (gradeIdx === -1) gradeIdx = 4;
 
-  (table as cheerio.Cheerio<any>).find("tr").each((rowIdx, row) => {
-    const cells = $(row).find("td");
+(table as cheerio.Cheerio<any>).find("tr").each((_, row) => {
+  const cells = $(row).find("td");
 
-    if (cells.length < 3) return;
+  if (cells.length < 3) return;
 
-    const courseCode = $(cells[codeIdx]).text().trim();
-    const courseName = $(cells[nameIdx]).text().trim();
-    const credit = $(cells[creditIdx]).text().trim();
-    const grade = $(cells[gradeIdx]).text().trim();
+  const courseCode = $(cells[codeIdx]).text().trim();
+  const courseName = $(cells[nameIdx]).text().trim();
+  const credit = $(cells[creditIdx]).text().trim();
+  const grade = $(cells[gradeIdx]).text().trim();
 
-    if (!courseCode && !courseName) return;
+  if (
+    !courseCode ||
+    courseCode.toLowerCase() === "code" ||
+    courseCode.toLowerCase().includes("course")
+  ) {
+    return;
+  }
 
-    courses.push({
-      courseCode,
-      courseName,
-      credit,
-      grade,
-    });
+  courses.push({
+    courseCode,
+    courseName,
+    credit,
+    grade,
   });
+});
 
   return courses;
 }
