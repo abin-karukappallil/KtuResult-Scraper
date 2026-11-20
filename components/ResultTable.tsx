@@ -1,6 +1,8 @@
 "use client";
 
-import { Hash, BookOpen, Star, Award, SearchX, Loader2 } from "lucide-react";
+import { Copy, Check, FileDown, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { exportGradeCardToPdf } from "@/lib/pdfExport";
 
 export interface CourseResult {
   courseCode: string;
@@ -15,17 +17,6 @@ interface ResultTableProps {
   isLoading: boolean;
   cgpa?: number;
 }
-
-const GRADE_THEMES: Record<string, string> = {
-  S: "bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/20",
-  A: "bg-blue-500/10 text-blue-600 ring-1 ring-blue-500/20",
-  "A+": "bg-blue-600 text-white shadow-sm",
-  B: "bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20",
-  "B+": "bg-indigo-500/10 text-indigo-600 ring-1 ring-indigo-500/20",
-  F: "bg-red-500 text-white shadow-md animate-pulse",
-  DEFAULT:
-    "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 ring-1 ring-slate-200 dark:ring-slate-700",
-};
 
 const GRADE_POINTS: Record<string, number> = {
   S: 10,
@@ -42,8 +33,18 @@ const GRADE_POINTS: Record<string, number> = {
   AB: 0,
 };
 
-function getGradeStyle(grade: string): string {
-  return GRADE_THEMES[grade.toUpperCase()] ?? GRADE_THEMES.DEFAULT;
+function getGradeBadge(grade: string) {
+  const g = grade.trim().toUpperCase();
+  if (g === "S" || g === "A+" || g === "A") {
+    return "text-[#00D492] border-[#00D492]/25 bg-[#00D492]/[0.06]";
+  }
+  if (g === "B+" || g === "B") {
+    return "text-[#4D6BFE] border-[#4D6BFE]/25 bg-[#4D6BFE]/[0.06]";
+  }
+  if (g === "C+" || g === "C" || g === "D" || g === "P") {
+    return "text-[#A8A39A] border-[#F4F4E9]/[0.10] bg-[#161614]";
+  }
+  return "text-[#FF5C5C] border-[#FF5C5C]/25 bg-[#FF5C5C]/[0.06]";
 }
 
 function calculateSGPA(courses: CourseResult[]) {
@@ -53,129 +54,187 @@ function calculateSGPA(courses: CourseResult[]) {
   courses.forEach((course) => {
     const credit = parseFloat(course.credit) || 0;
     const gradePoint = GRADE_POINTS[course.grade.toUpperCase()] ?? 0;
-
     totalCredits += credit;
     weightedPoints += credit * gradePoint;
   });
 
-  if (totalCredits === 0) return 0;
-
-  return weightedPoints / totalCredits;
+  if (totalCredits === 0) return "0.00";
+  return (weightedPoints / totalCredits).toFixed(2);
 }
 
 export function ResultTable({
   courses,
   semesterId,
   isLoading,
-  cgpa,
 }: ResultTableProps) {
+  const [copied, setCopied] = useState(false);
+
   const totalCredits = courses.reduce(
     (sum, c) => sum + (parseFloat(c.credit) || 0),
     0
   );
 
   const sgpa = calculateSGPA(courses);
+  const failCount = courses.filter(
+    (c) =>
+      c.grade.toUpperCase() === "F" ||
+      c.grade.toUpperCase() === "FE" ||
+      c.grade.toUpperCase() === "AB"
+  ).length;
+
+  const handleCopy = () => {
+    const text = courses
+      .map((c) => `${c.courseCode} - ${c.courseName}: ${c.grade} (${c.credit} credits)`)
+      .join("\n");
+    const summary = `Semester ${semesterId} Results\nSGPA: ${sgpa}\nTotal Credits: ${totalCredits}\n\n${text}`;
+    navigator.clipboard.writeText(summary);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (isLoading) {
     return (
-      <div className="flex h-112.5 flex-col items-center justify-center rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-        <p className="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
-          getting Records...
-        </p>
+      <div className="h-64 flex flex-col items-center justify-center border border-[#F4F4E9]/[0.08] rounded bg-[#131311]">
+        <div className="w-4 h-4 border-2 border-[#716D64] border-t-[#C8A96B] rounded-full animate-spin" />
+        <span className="mt-3 text-xs text-[#A8A39A] font-mono uppercase tracking-[0.14em]">
+          Parsing University Grade Card...
+        </span>
       </div>
     );
   }
 
   if (courses.length === 0) {
     return (
-      <div className="flex h-100 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/20">
-        <SearchX
-          className="mb-4 text-slate-300 dark:text-slate-700"
-          size={40}
-        />
-        <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100">
-          No records found
-        </h3>
-        <p className="mt-1 text-xs text-slate-500">
-          Semester {semesterId} currently has no published results.
+      <div className="p-8 text-center border border-dashed border-[#F4F4E9]/[0.10] rounded bg-[#131311]">
+        <p className="text-sm font-medium text-[#F2EFE8]">
+          No published records found
+        </p>
+        <p className="mt-1 text-xs text-[#716D64] font-mono">
+          Semester {semesterId} has no declared results for this account.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 dark:border-slate-800 dark:bg-slate-900">
-          <Award size={14} className="text-indigo-500" />
-          <span className="text-[11px] font-bold uppercase tracking-tight text-slate-600 dark:text-slate-400">
-            SGPA:{" "}
-            <span className="text-slate-900 dark:text-white">
-              {sgpa.toFixed(2)}
-            </span>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-4 rounded border border-[#F4F4E9]/[0.08] bg-[#131311]">
+          <span className="text-[10px] uppercase font-mono tracking-[0.16em] text-[#C8A96B] block mb-1">
+            Calculated SGPA
+          </span>
+          <span className="text-3xl font-semibold font-display tracking-tight text-[#F2EFE8]">
+            {sgpa}
           </span>
         </div>
 
-        {cgpa !== undefined && (
-          <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 dark:border-slate-800 dark:bg-slate-900">
-            <Award size={14} className="text-indigo-500" />
-            <span className="text-[11px] font-bold uppercase tracking-tight text-slate-600 dark:text-slate-400">
-              CGPA:{" "}
-              <span className="text-slate-900 dark:text-white">
-                {cgpa.toFixed(2)}
-              </span>
+        <div className="p-4 rounded border border-[#F4F4E9]/[0.08] bg-[#131311]">
+          <span className="text-[10px] uppercase font-mono tracking-[0.16em] text-[#716D64] block mb-1">
+            Total Credits
+          </span>
+          <span className="text-3xl font-semibold font-display tracking-tight text-[#F2EFE8]">
+            {totalCredits.toFixed(1)}
+          </span>
+        </div>
+
+        <div className="p-4 rounded border border-[#F4F4E9]/[0.08] bg-[#131311]">
+          <span className="text-[10px] uppercase font-mono tracking-[0.16em] text-[#716D64] block mb-1">
+            Courses Graded
+          </span>
+          <span className="text-3xl font-semibold font-display tracking-tight text-[#F2EFE8]">
+            {courses.length}
+          </span>
+        </div>
+
+        <div className="p-4 rounded border border-[#F4F4E9]/[0.08] bg-[#131311]">
+          <span className="text-[10px] uppercase font-mono tracking-[0.16em] text-[#716D64] block mb-1">
+            Status
+          </span>
+          <div className="flex items-center gap-2 mt-2">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                failCount === 0 ? "bg-[#00D492]" : "bg-[#FF5C5C]"
+              }`}
+            />
+            <span
+              className={`text-sm font-semibold font-mono tracking-tight ${
+                failCount === 0 ? "text-[#00D492]" : "text-[#FF5C5C]"
+              }`}
+            >
+              {failCount === 0 ? "ALL CLEAR" : `${failCount} BACKLOG${failCount > 1 ? "S" : ""}`}
             </span>
           </div>
-        )}
-
-        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-1.5 dark:border-slate-800 dark:bg-slate-900">
-          <BookOpen size={14} className="text-indigo-500" />
-          <span className="text-[11px] font-bold uppercase tracking-tight text-slate-600 dark:text-slate-400">
-            Courses:{" "}
-            <span className="text-slate-900 dark:text-white">
-              {courses.length}
-            </span>
-          </span>
         </div>
       </div>
 
-      {/* rest of your UI unchanged */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="border border-[#F4F4E9]/[0.08] rounded overflow-hidden bg-[#131311]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#F4F4E9]/[0.08] bg-[#161614]">
+          <div className="flex items-center gap-2">
+            <span className="text-xs uppercase font-mono tracking-[0.14em] text-[#F2EFE8]">
+              Semester {semesterId} Grade Card
+            </span>
+            <span className="text-[10px] font-mono text-[#716D64]">
+              ({courses.length} records)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 text-xs text-[#A8A39A] hover:text-[#F2EFE8] transition-colors font-mono px-2 py-1 rounded bg-[#131311] border border-[#F4F4E9]/[0.08]"
+            >
+              {copied ? <Check size={12} className="text-[#00D492]" /> : <Copy size={12} />}
+              <span>{copied ? "Copied" : "Copy"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                exportGradeCardToPdf({
+                  courses,
+                  semesterId,
+                  sgpa,
+                  totalCredits,
+                })
+              }
+              className="flex items-center gap-1.5 text-xs text-[#C8A96B] hover:text-[#e4cf9b] transition-colors font-mono px-2.5 py-1 rounded bg-[#131311] border border-[#C8A96B]/30 hover:border-[#C8A96B]/60 shadow-[inset_0_1px_0_0_#C8A96B]/20"
+            >
+              <FileDown size={12} className="text-[#C8A96B]" />
+              <span>Export PDF</span>
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left">
+          <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                  <div className="flex items-center gap-2"><Hash size={12} /> Code</div>
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                  Course Detail
-                </th>
-                <th className="px-6 py-4 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                  Credits
-                </th>
-                <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                  Grade
-                </th>
+              <tr className="border-b border-[#F4F4E9]/[0.08] bg-[#161614]/70 text-[#716D64] font-mono uppercase tracking-[0.12em]">
+                <th className="py-2.5 px-4 font-medium text-[10px]">Code</th>
+                <th className="py-2.5 px-4 font-medium text-[10px]">Course Title</th>
+                <th className="py-2.5 px-4 text-center font-medium text-[10px]">Credits</th>
+                <th className="py-2.5 px-4 text-right font-medium text-[10px]">Grade</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-[#F4F4E9]/[0.05]">
               {courses.map((course, idx) => (
-                <tr key={`${course.courseCode}-${idx}`} className="group hover:bg-slate-50/80 dark:hover:bg-slate-900/40 transition-colors">
-                  <td className="whitespace-nowrap px-6 py-4 font-mono text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
+                <tr
+                  key={`${course.courseCode}-${idx}`}
+                  className="hover:bg-[#161614]/50 transition-colors"
+                >
+                  <td className="py-3 px-4 font-mono font-medium text-[#F2EFE8]">
                     {course.courseCode}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {course.courseName}
-                    </div>
+                  <td className="py-3 px-4 text-[#A8A39A]">
+                    {course.courseName}
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="text-xs font-medium text-slate-500">{course.credit}</span>
+                  <td className="py-3 px-4 text-center font-mono text-[#716D64]">
+                    {course.credit}
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`inline-flex min-w-8 items-center justify-center rounded-md px-2 py-1 text-[11px] font-black tracking-tighter ${getGradeStyle(course.grade)}`}>
+                  <td className="py-3 px-4 text-right font-mono">
+                    <span
+                      className={`inline-block px-2.5 py-0.5 rounded text-[11px] font-semibold border ${getGradeBadge(
+                        course.grade
+                      )}`}
+                    >
                       {course.grade}
                     </span>
                   </td>
@@ -186,19 +245,24 @@ export function ResultTable({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-900/20">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Performance Matrix</h4>
-          <Star size={14} className="text-slate-300" />
-        </div>
-        <div className="flex gap-1.5 h-1.5 w-full">
-          {courses.map((c, i) => (
-            <div
-              key={i}
-              className={`h-full flex-1 rounded-full ${c.grade.startsWith('A') || c.grade === 'S' ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}
-              title={`${c.courseName}: ${c.grade}`}
-            />
-          ))}
+      <div className="p-3.5 rounded border border-[#F4F4E9]/[0.08] bg-[#131311] flex items-start gap-3">
+        <AlertCircle size={14} className="text-[#C8A96B] shrink-0 mt-0.5" />
+        <div className="space-y-0.5 text-xs">
+          <span className="font-mono uppercase tracking-[0.14em] text-[10px] text-[#C8A96B] font-medium block">
+            Official Portal Verification Advisory
+          </span>
+          <p className="text-[11px] text-[#716D64] font-mono leading-relaxed">
+            This proxy extracts published results to bypass gateway congestion during peak result release. Always verify your official grades and marks on the university portal (
+            <a
+              href="https://app.ktu.edu.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#C8A96B] hover:text-[#e4cf9b] underline transition-colors"
+            >
+              app.ktu.edu.in
+            </a>
+            ) once traffic rush subsides.
+          </p>
         </div>
       </div>
     </div>

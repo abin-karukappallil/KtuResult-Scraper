@@ -3,9 +3,9 @@
 [![GitHub](https://img.shields.io/badge/GitHub-Open%20Source-blue?logo=github)](https://github.com/abin-karukappallil/KtuResult-Scraper)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/abin-karukappallil/KtuResult-Scraper/blob/main/LICENSE)
 
-A modern, secure web application built with **Next.js 16**, **tRPC**, and **Cheerio** that fetches semester results from the official KTU (APJ Abdul Kalam Technological University) Academic Portal — but **faster, cleaner, and more usable**.
+A modern, secure web application built with **Next.js 16**, **tRPC**, and **Cheerio** that fetches semester results from the official academic portal — but **faster, cleaner, and more usable**.
 
-> **⚠️ Disclaimer:** This tool does **not** store any credentials or personal data. All login requests are proxied server-side and discarded after the session ends. This project is not affiliated with KTU.
+This project is independent of the university. Sign in on the official KTU portal and use your active session to look up grades.
 
 ---
 
@@ -13,16 +13,14 @@ A modern, secure web application built with **Next.js 16**, **tRPC**, and **Chee
 
 | Feature | KTU Portal (`app.ktu.edu.in`) | This App |
 |---|---|---|
-| **Speed** | 8–15s page loads, frequent timeouts | 2–4s end-to-end (login + scrape + render) |
 | **UI/UX** | 2008-era Java JSP pages, no mobile support | Modern responsive UI, dark mode, works on all devices |
-| **Session Handling** | Session expires every few minutes, forces re-login | Session cached for 10 min, auto-reuses silently |
+| **Session Handling** | Sign in to access grades | Enter a JSESSION TOKEN from your active portal session |
 | **Error Messages** | Generic Java stack traces or blank pages | Clear, human-readable error messages |
-| **SSL** | Broken/misconfigured TLS certificates | Handled transparently server-side |
 | **Result View** | Cluttered table with 15+ unnecessary columns | Clean table with only what matters: code, name, credits, grade |
 | **Grade Visualization** | None | Color-coded grades + performance matrix bar |
 | **Accessibility** | Poor contrast, no keyboard nav | Proper labels, focus rings, semantic HTML |
 | **API Abuse Protection** | None (open endpoints) | HMAC-signed tokens + rate limiting |
-| **Credential Storage** | Session cookies with long TTL | Zero persistence — nothing saved, ever |
+| **Session Token Storage** | Browser cookie | Encrypted temporary storage for background watchers |
 
 ### The Core Problem with KTU Portal
 
@@ -32,15 +30,16 @@ A modern, secure web application built with **Next.js 16**, **tRPC**, and **Chee
 4. **SSL issues** — The portal's TLS certificate chain is misconfigured, causing browser warnings
 5. **No API** — Everything is server-rendered HTML with form submissions
 
-This app solves all of that by acting as a **smart proxy** — it logs in on your behalf, scrapes the result HTML, parses it with Cheerio, and returns clean JSON to a modern React frontend.
+The app uses your active KTU session to request the grade card, parses the result HTML with Cheerio, and displays the grades in React.
 
 ---
 
 ## ✨ Features
 
 ### 🔐 Secure Authentication Flow
-- Credentials are sent over HTTPS and only used server-side to authenticate with KTU
-- No database — nothing is persisted
+- Enter the `JSESSIONID` cookie value from your own signed-in KTU session
+- The server loads the grade-card form with GET using the supplied `JSESSIONID`. It reads the CSRF token and any `AWSALB` or `AWSALBCORS` cookies KTU returns with the form.
+- The semester POST uses the supplied `JSESSIONID`, the CSRF token, and the returned routing cookies. After a successful lookup, the app can reuse the routing cookies in the same server process for up to 30 minutes. The cache key is a hash of the supplied `JSESSIONID`.
 - HMAC-signed short-lived API tokens prevent unauthorized API usage
 - Rate limiting (5 requests/minute per IP) blocks brute-force and abuse
 
@@ -50,10 +49,9 @@ This app solves all of that by acting as a **smart proxy** — it logs in on you
 - **Per-IP rate limiter** — In-memory request throttling
 - **curl/Postman abuse prevention** — External callers cannot replicate the token handshake
 
-### ⚡ Session Caching
-- After successful login, the KTU session is cached in-memory for **10 minutes**
-- Subsequent requests with same credentials reuse the cached session
-- Cached sessions are validated before reuse — expired sessions trigger fresh login automatically
+### KTU Session Expiry
+
+If KTU expires your session, sign in again on the official portal and enter the new token.
 
 ### 🎨 Modern UI
 - Clean, minimal design with **Tailwind CSS v4**
@@ -68,6 +66,20 @@ This app solves all of that by acting as a **smart proxy** — it logs in on you
 - Total credits and course count summary badges
 - Per-course performance bar chart
 - Empty state and error handling with clear messaging
+
+### 🔔 Dual-Mode Watcher & Automated React Email Alerts
+Never refresh KTU portal constantly on result declaration days. Choose your preferred alert mode:
+- **Mode A: Live Watcher (Tab Kept Open)**
+  - Periodic polling every 10–20 mins directly from the browser
+  - Uses the token from the open browser tab for each check
+  - Dispatches email alert as soon as grades are posted
+- **Mode B: Offline Background Watcher (Cloudflare & Redis)**
+  - Close your tab and walk away
+  - Encrypts the session token with AES-256-GCM
+  - Ends when KTU rejects the session as expired, the result email is sent, the watcher is revoked, or the 12-hour storage limit is reached
+  - Watchers created with a portal password need to be started again with a session token
+  - **Custom React Email**: Beautiful grade cards styled with `@react-email/components` and sent via Nodemailer
+  - **100% Open-Source**: Transparent and verifiable code at [GitHub Repository](https://github.com/abin-karukappallil/KtuResult-Scraper)
 
 ---
 
@@ -98,6 +110,9 @@ Create a `.env.local` file:
 # Required for token security in production
 # Auto-generated if missing, but set this for consistent behavior across deploys
 API_TOKEN_SECRET=your-random-secret-string-here
+
+# Set a separate random secret when using Upstash Redis for background watchers
+ENCRYPTION_SECRET=your-random-encryption-secret-here
 ```
 
 Generate a secure secret:
@@ -137,7 +152,7 @@ bun run lint
 | Framework     | Next.js 15 (App Router)              |
 | API Layer     | tRPC v11                             |
 | Data Fetching | TanStack React Query                 |
-| HTTP Client   | undici (bypasses KTU's broken TLS)   |
+| HTTP Client   | Fetch                               |
 | HTML Parsing  | Cheerio                              |
 | Styling       | Tailwind CSS v4                      |
 | Icons         | Lucide React                         |
@@ -179,15 +194,14 @@ Page Load
 | Stolen token | 5-minute TTL — limited window |
 | Brute force | 5 req/min per IP rate limit |
 | Replay from different IP | Rate limit applies per IP independently |
-| Scraping the token endpoint | Token alone is useless without valid KTU credentials |
+| Scraping the token endpoint | Grade lookups also require a valid KTU session |
 
-### What is NOT Stored
+### Data Retention
 
 | Data | Stored? |
 |---|---|
-| Passwords | ❌ Used once, discarded |
 | Student results | ❌ Returned to client, never persisted |
-| Session cookies | ⏱️ In-memory cache, 10 min TTL, lost on redeploy |
+| Session tokens | Encrypted for up to 12 hours when you enable background watching |
 | API tokens | ❌ Stateless HMAC verification |
 | Request logs | ❌ No database, no analytics |
 
@@ -195,18 +209,10 @@ Page Load
 
 ## 📖 Usage
 
-1. Open the app in your browser
-2. Enter your **KTU Portal username** (e.g., `SJC23CC006`)
-3. Enter your **KTU Portal password**
-4. Select the **semester** (S1–S8)
-5. *(Optional)* Enter a student ID if checking another student's results
-6. Click **Get Results**
-7. View your grades, total credits, and performance matrix
-
-### First Request vs Cached
-
-- **First request** (~3–5s): Full login flow (3 HTTP calls to KTU) + scrape
-- **Subsequent requests** (~1–2s): Cached session reused, only 1 HTTP call to KTU
+1. Sign in to the official KTU portal in your browser.
+2. Paste your active `JSESSIONID` value into **JSESSION TOKEN**. You can also include the `JSESSIONID=` prefix.
+3. Select the **semester** (S1–S8).
+4. Click **Query Semester Grade Card**.
 
 ---
 
@@ -216,8 +222,8 @@ Page Load
 |---|---|---|
 | "Invalid or expired request token" | API token expired | Refresh the page |
 | "Rate limit exceeded" | Too many requests | Wait 60 seconds |
-| "Login failed" | Wrong credentials | Verify at [app.ktu.edu.in](https://app.ktu.edu.in) |
-| "Invalid or expired session" | Cached session went stale | Retry (auto re-logins) |
+| "Your KTU session is invalid or expired" | KTU rejected the session | Sign in on the official portal and enter a fresh token |
+| "KTU portal responded with HTTP 412" | KTU rejected the request | Try again shortly. The app refreshes the grade card form once if submission returns 412. |
 | "No records found" | Semester has no published results | Try a different semester |
 | Blank course names | KTU changed their HTML structure | Check server logs, open an issue |
 | "Could not extract CSRF token" | KTU portal is down | Try again later |
@@ -256,7 +262,7 @@ bun run build
 PORT=3000 bun run start
 ```
 
-> **Note:** In-memory rate limiting and session caching reset on serverless cold starts. For production-grade rate limiting, consider [Upstash Redis](https://upstash.com) or [Vercel KV](https://vercel.com/storage/kv).
+> In-memory rate limiting and in-memory watcher jobs reset on serverless cold starts. Configure Upstash Redis to persist background watcher jobs across restarts.
 
 ---
 

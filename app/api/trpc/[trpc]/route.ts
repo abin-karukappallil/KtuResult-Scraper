@@ -1,6 +1,9 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "@/trpc/routers/_app";
 import { createTRPCContext } from "@/trpc/init";
+import { startSelfHostedScheduler } from "@/lib/selfHostedScheduler";
+
+startSelfHostedScheduler();
 
 const handler = (req: Request) =>
   fetchRequestHandler({

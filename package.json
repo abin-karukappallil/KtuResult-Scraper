@@ -14,14 +14,21 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.1.1",
     "@tanstack/react-query": "^5.90.21",
     "@trpc/client": "^11.12.0",
     "@trpc/next": "^11.12.0",
     "@trpc/react-query": "^11.12.0",
     "@trpc/server": "^11.12.0",
+    "@upstash/redis": "^1.39.0",
     "cheerio": "^1.2.0",
+    "inngest": "^4.25.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "lucide-react": "^0.577.0",
     "next": "16.1.6",
+    "nodemailer": "^10.1.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "superjson": "^2.2.6",
@@ -31,10 +38,12 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "inngest-cli": "^1.46.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
@@ -43,6 +52,7 @@
     "unrs-resolver"
   ],
   "trustedDependencies": [
+    "inngest-cli",
     "sharp",
     "unrs-resolver"
   ]

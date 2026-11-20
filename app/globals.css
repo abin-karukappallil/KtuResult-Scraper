@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0F0F0E;
+  --foreground: #F2EFE8;
+  --surface-1: #131311;
+  --surface-2: #161614;
+  --hairline: rgba(244, 244, 233, 0.08);
+  --hairline-strong: rgba(244, 244, 233, 0.16);
+  --accent-gold: #C8A96B;
+  --text-primary: #F2EFE8;
+  --text-secondary: #A8A39A;
+  --text-muted: #716D64;
+  --status-blue: #4D6BFE;
+  --status-green: #00D492;
+  --status-green-soft: #5EE9B5;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-tomorrow);
+  --font-sans: var(--font-tomorrow);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: #0F0F0E;
+  color: #F2EFE8;
+  font-family: var(--font-tomorrow), var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: var(--font-tomorrow), -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-jetbrains-mono), monospace;
 }
